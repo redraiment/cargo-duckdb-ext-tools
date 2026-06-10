@@ -1,17 +1,19 @@
 //! Command implementations for cargo-duckdb-ext subcommands
 //!
 //! This module defines the `Command` trait and provides implementations
-//! for the `new`, `build`, and `package` subcommands.
+//! for the `new`, `build`, `meta`, and `package` subcommands.
 
 mod build_command;
+mod meta_command;
 mod new_command;
 mod package_command;
 
 use crate::commands::build_command::BuildCommand;
+use crate::commands::meta_command::MetaCommand;
+pub(crate) use crate::commands::meta_command::STABLE_ABI_TYPE;
+pub(crate) use crate::commands::meta_command::UNSTABLE_ABI_TYPE;
 use crate::commands::new_command::NewCommand;
 use crate::commands::package_command::PackageCommand;
-pub(crate) use crate::commands::package_command::STABLE_ABI_TYPE;
-pub(crate) use crate::commands::package_command::UNSTABLE_ABI_TYPE;
 use crate::error::ToolsError;
 use crate::logging;
 use crate::options::Commands;
@@ -40,6 +42,7 @@ impl TryInto<Box<dyn Command>> for Options {
         logging::init(self.quiet);
         let task: Box<dyn Command> = match self.command {
             Commands::Build(options) => Box::new(BuildCommand::try_from(options)?),
+            Commands::Meta(options) => Box::new(MetaCommand::try_from(options)?),
             Commands::Package(options) => Box::new(PackageCommand::try_from(options)?),
             Commands::New(options) => Box::new(NewCommand::try_from(options)?),
         };

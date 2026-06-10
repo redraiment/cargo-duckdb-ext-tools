@@ -7,6 +7,7 @@
 //! 4. Applying intelligent defaults for extension metadata
 
 use crate::building;
+use crate::commands::meta_command::ExtensionMetadata;
 use crate::commands::package_command::PackageCommand;
 use crate::commands::Command;
 use crate::error::ToolsError;
@@ -215,13 +216,11 @@ impl BuildCommand {
         let abi_type = self.abi_type.to_owned();
 
         let file = open_duplicate(&library_path, &extension_path)?;
+        let metadata = ExtensionMetadata::package(&abi_type, &extension_version, &duckdb_version, &duckdb_platform)?;
         Ok(PackageCommand {
             file,
             extension_path,
-            extension_version,
-            duckdb_platform,
-            duckdb_version,
-            abi_type,
+            metadata,
         })
     }
 
