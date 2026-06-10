@@ -1,20 +1,15 @@
 [package]
 name = "duckdb-ext-macros"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Zhang, Zepeng <redraiment@gmail.com>"]
 description = "A modern, Rust 2024 Edition compatible procedural macro for creating DuckDB loadable extensions."
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/redraiment/duckdb-ext-macros"
+repository = "https://github.com/redraiment/cargo-duckdb-ext-tools"
 keywords = ["duckdb", "extension", "database", "macro", "loadable"]
 categories = ["database", "development-tools", "api-bindings"]
-include = [
-    "src/**/*",
-    "Cargo.toml",
-    "README.md",
-    "README.zh.md"
-]
+include = ["src/**/*", "Cargo.toml", "README.md", "README.zh.md"]
 
 [lib]
 name = "duckdb_ext_macros"
@@ -23,6 +18,6 @@ proc-macro = true
 
 [dependencies]
 darling = "0.21.3"
-proc-macro2 = "1.0.103"
-quote = "1.0.42"
-syn = "2.0.111"
+proc-macro2 = "1.0.106"
+quote = "1.0.45"
+syn = "2.0.117"

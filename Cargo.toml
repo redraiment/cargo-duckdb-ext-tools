@@ -1,6 +1,11 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+default-members = ["."]
+
 [package]
 name = "cargo-duckdb-ext-tools"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 authors = ["Zhang, Zepeng <redraiment@gmail.com>"]
 description = "A cargo subcommand that packages DuckDB extensions by appending the required extension metadata to a compiled dynamic library."
@@ -9,27 +14,22 @@ readme = "README.md"
 repository = "https://github.com/redraiment/cargo-duckdb-ext-tools"
 keywords = ["cargo-subcommand", "duckdb", "extension", "metadata", "packager"]
 categories = ["development-tools::cargo-plugins", "database", "command-line-utilities"]
-include = [
-    "src/**/*",
-    "Cargo.toml",
-    "README.md",
-    "README.zh.md"
-]
+include = ["src/**/*", "Cargo.toml", "README.md", "README.zh.md"]
 
 [[bin]]
 name = "cargo-duckdb-ext"
 path = "src/main.rs"
 
+[dependencies]
+anstream = "1.0.0"
+anstyle = "1.0.14"
+cargo_metadata = "0.23.1"
+clap = { version = "4.6.1", features = ["derive"] }
+heck = "0.5.0"
+serde_json = "1.0.150"
+target-lexicon = "0.13.5"
+thiserror = "2.0.18"
+
 [profile.release]
 lto = true
 strip = true
-
-[dependencies]
-anstream = "1.0.0"
-anstyle = "1.0.13"
-cargo_metadata = "0.23.1"
-clap = { version = "4.5.60", features = ["derive"] }
-heck = "0.5.0"
-serde_json = "1.0.149"
-target-lexicon = "0.13.5"
-thiserror = "2.0.18"

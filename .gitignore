@@ -1,7 +1,8 @@
 # IDEA
 .idea/
 
-# Development
+# AI
+/AGENTS.md
 /CLAUDE.md
 
 # Build
