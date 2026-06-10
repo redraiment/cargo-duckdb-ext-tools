@@ -78,7 +78,7 @@ impl TryFrom<BuildOptions> for BuildCommand {
         let duckdb_version = options.version().or_else(|| {
             metadata.packages.iter().find_map(|package| {
                 if package.name == "duckdb" || package.name == "libduckdb-sys" {
-                    Some(format!("v{}", package.version))
+                    Some(normalize_duckdb_version_from_crate_version(&package.version))
                 } else {
                     None
                 }
@@ -281,5 +281,87 @@ impl BuildCommand {
             arch => arch,
         };
         format!("{os}_{arch}")
+    }
+}
+
+/// Converts the version of the `duckdb`/`libduckdb-sys` crate to a DuckDB version string.
+///
+/// Starting with DuckDB 1.5.0, the `duckdb`/`libduckdb-sys` crate uses a special versioning scheme
+/// where the minor component encodes the MAJOR, MINOR, and PATCH versions of DuckDB
+/// as a single integer: `MAJOR * 10000 + MINOR * 100 + PATCH`.
+/// For example, version `1.10502.0` corresponds to DuckDB `1.5.2`.
+///
+/// This function detects such encoded versions and decodes
+/// them into the standard `vMAJOR.MINOR.PATCH` format expected by DuckDB.
+/// All other version strings are returned with a 'v' prefix unchanged.
+fn normalize_duckdb_version_from_crate_version(version: &Version) -> String {
+    // Heuristic: if minor is large enough to encode a three-part version
+    // (>= 10000, i.e., 5 or more digits), it's the new scheme.
+    if version.minor >= 10000 {
+        let major = version.minor / 10000;
+        let minor = (version.minor % 10000) / 100;
+        let patch = version.minor % 100;
+        format!("v{}.{}.{}", major, minor, patch)
+    } else {
+        format!("v{}", version)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_legacy_version_scheme() {
+        let v = Version::parse("0.10.0").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v0.10.0");
+        let v = Version::parse("1.4.2").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v1.4.2");
+    }
+
+    #[test]
+    fn test_new_version_scheme() {
+        // DuckDB 1.5.2  -> crate version 1.10502.0
+        let v = Version::parse("1.10502.0").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v1.5.2");
+        // DuckDB 2.1.0  -> crate version 2.20100.0 (crate major may differ)
+        let v = Version::parse("2.20100.0").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v2.1.0");
+        // DuckDB 1.4.2  -> crate version 1.10402.0
+        let v = Version::parse("1.10402.0").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v1.4.2");
+        // DuckDB 3.14.15 -> crate version 3.31415.0
+        let v = Version::parse("3.31415.0").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v3.14.15");
+    }
+
+    #[test]
+    fn test_small_minor_not_decoded() {
+        // minor < 10000, treat as legacy.
+        let v = Version::parse("1.123.0").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v1.123.0");
+    }
+
+    #[test]
+    fn test_pre_release_ignored() {
+        // Pre-release info is ignored; decoding still happens based on minor.
+        let v = Version::parse("1.10502.0-alpha.1").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v1.5.2");
+    }
+
+    #[test]
+    fn test_build_metadata_ignored() {
+        let v = Version::parse("1.10502.0+build.42").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v1.5.2");
+    }
+
+    #[test]
+    fn test_zero_padding() {
+        // DuckDB 1.0.0 -> crate version 1.10000.0
+        let v = Version::parse("1.10000.0").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v1.0.0");
+        // DuckDB 0.1.5 -> crate version 0.105.0? (minor=105, <10000 -> legacy)
+        let v = Version::parse("0.105.0").unwrap();
+        assert_eq!(normalize_duckdb_version_from_crate_version(&v), "v0.105.0");
     }
 }
