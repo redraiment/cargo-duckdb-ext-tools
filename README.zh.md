@@ -14,17 +14,18 @@ DuckDB 扩展是动态库文件（`.dylib`/`.so`/`.dll`），在文件末尾附�
 
 | Package | 路径 | 职责 |
 |---------|------|------|
-| `cargo-duckdb-ext-tools` | `.` | Cargo 插件，安装后命令为 `cargo-duckdb-ext`，提供 `new`、`build`、`package` 子命令 |
+| `cargo-duckdb-ext-tools` | `.` | Cargo 插件，安装后命令为 `cargo-duckdb-ext`，提供 `new`、`build`、`package`、`meta` 子命令 |
 | `duckdb-ext-macros` | `crates/duckdb-ext-macros` | 过程宏 crate，提供 `#[duckdb_extension]`，用于生成 DuckDB C API 入口点 |
 
 ### 主要特性
 
 - **零非 Rust 依赖**：纯 Rust 实现，无需 Python 或额外运行时工具
-- **完整的开发工作流**：`new` -> `build` -> `package` 一体化工具
+- **完整的开发工作流**：项目脚手架、构建、打包、元信息查看，一体化工具
 - **同仓维护入口点宏**：生成项目使用的 `duckdb-ext-macros` 与 CLI 模板在同一仓库维护
 - **智能默认值**：从 Cargo 元数据和构建工件自动推断参数
 - **跨平台支持**：支持主要平台的原生构建和交叉编译
 - **专业日志输出**：兼容 Cargo 的输出格式，支持颜色
+- **元信息查看与编辑**：无需外部脚本即可读取和更新 DuckDB 扩展元信息页脚
 - **ABI 版本支持**：支持稳定（`C_STRUCT`）和不稳定（`C_STRUCT_UNSTABLE`）ABI 类型
 
 ## 安装
@@ -35,7 +36,7 @@ DuckDB 扩展是动态库文件（`.dylib`/`.so`/`.dll`），在文件末尾附�
 cargo install cargo-duckdb-ext-tools
 ```
 
-工具安装后命令为 `cargo-duckdb-ext`，提供三个子命令：`new`、`build` 和 `package`。
+工具安装后命令为 `cargo-duckdb-ext`，提供四个子命令：`new`、`build`、`package` 和 `meta`。
 
 配套过程宏通常会在执行 `cargo duckdb-ext new` 时自动加入新项目。如果手写扩展项目、不使用生成器，请和 DuckDB 可加载扩展依赖一起添加：
 
@@ -63,7 +64,10 @@ cargo duckdb-ext build -- --release
 # 4. 扩展现在已准备就绪：
 # target/release/quack.duckdb_extension
 
-# 5. 在 DuckDB 中加载并测试扩展
+# 5. 检查扩展元信息
+cargo duckdb-ext meta target/release/quack.duckdb_extension
+
+# 6. 在 DuckDB 中加载并测试扩展
 duckdb -unsigned -c "load 'target/release/quack.duckdb_extension'; from quack('Joe')"
 ```
 
@@ -173,6 +177,40 @@ cargo duckdb-ext package \
   -d v1.4.2
 ```
 
+### 4. `cargo duckdb-ext meta` - 查看和更新扩展元信息
+
+读取 `.duckdb_extension` 文件中 534 字节的 DuckDB 元信息页脚，或就地更新指定字段。如果目标文件尚不包含元信息页脚且提供了更新选项，该命令会自动追加一个新的页脚。
+
+```bash
+cargo duckdb-ext meta [选项] <扩展文件路径>
+```
+
+#### 基本用法
+
+```bash
+# 只读模式：展示元信息，不修改扩展文件
+cargo duckdb-ext meta target/release/quack.duckdb_extension
+
+# 编辑模式：更新指定字段
+cargo duckdb-ext meta \
+  -v v1.0.1 \
+  -p osx_arm64 \
+  -a v1.2.0 \
+  target/release/quack.duckdb_extension
+```
+
+#### 关键选项
+
+- `--field-1`、`--field-2`、`--field-3`：以小写十六进制形式更新保留的 32 字节字段
+- `-v, --extension-version`：更新扩展版本
+- `-d, --duckdb-version`：更新 DuckDB 版本并设置 ABI 类型为 `C_STRUCT_UNSTABLE`
+- `-a, --duckdb-capi-version`：更新 DuckDB C API 版本并设置 ABI 类型为 `C_STRUCT`
+- `-p, --duckdb-platform`：更新 DuckDB 平台标识符
+- `-m, --magic-version`：更新元信息的魔术版本
+- `-s, --signature`：以小写十六进制形式更新 256 字节的签名区域
+
+不提供任何选项时，`meta` 为只读模式。十六进制字段必须使用小写字母且不能超过各自的固定长度。
+
 ## 配套过程宏 crate
 
 `duckdb-ext-macros` 提供生成项目使用的 `#[duckdb_extension]` 属性宏：
@@ -230,17 +268,9 @@ pub fn extension_entrypoint(connection: Connection) -> Result<(), Box<dyn Error>
 5. DuckDB/C API 版本（32 字节）
 6. 平台标识符（32 字节）
 7. 魔术版本 `4`（32 字节）
-8. 8 个签名填充字段（256 字节）
+8. 签名区域（256 字节；全零表示未签名）
 
-### 构建集成
-
-`build` 子命令使用 `cargo build --message-format=json` 来：
-
-1. 使用用户提供的参数执行构建
-2. 解析 JSON 输出以找到 `cdylib` 工件
-3. 从 Cargo.toml 提取包元数据
-4. 为缺失参数应用智能默认值
-5. 创建并执行打包命令
+`package` 和 `build` 子命令在创建 `.duckdb_extension` 文件时会写入此页脚。`meta` 子命令可展示相同字段、更新指定值，或为尚无页脚的文件追加元信息。
 
 ## 项目结构
 
@@ -300,8 +330,3 @@ cargo install --path .
 
 本项目基于 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
-## 致谢
-
-- DuckDB 团队创建了优秀的数据库和扩展系统
-- Rust 社区提供了优秀的工具生态
-- 本项目的所有贡献者和用户

@@ -14,17 +14,18 @@ This workspace keeps the Rust extension workflow in the Rust ecosystem:
 
 | Package | Path | Role |
 |---------|------|------|
-| `cargo-duckdb-ext-tools` | `.` | Cargo plugin that installs as `cargo-duckdb-ext` and provides `new`, `build`, and `package` subcommands |
+| `cargo-duckdb-ext-tools` | `.` | Cargo plugin that installs as `cargo-duckdb-ext` and provides `new`, `build`, `package`, and `meta` subcommands |
 | `duckdb-ext-macros` | `crates/duckdb-ext-macros` | Procedural macro crate that provides `#[duckdb_extension]` for generating DuckDB C API entrypoints |
 
 ### Key Features
 
 - **Zero Non-Rust Dependencies**: Pure Rust implementation, no Python or external runtime tools required
-- **Complete Development Workflow**: `new` -> `build` -> `package` in one cohesive tool
+- **Complete Development Workflow**: Scaffold, build, package, and inspect extension metadata in one cohesive tool
 - **Workspace-Owned Entrypoint Macro**: Generated projects use `duckdb-ext-macros`, maintained in the same repository as the CLI templates
 - **Intelligent Defaults**: Automatic parameter inference from Cargo metadata and build artifacts
 - **Cross-Platform Support**: Native builds and cross-compilation for all major platforms
 - **Professional Logging**: Cargo-compatible output format with color support
+- **Metadata Inspection and Editing**: Read or update DuckDB extension metadata footers without external scripts
 - **ABI Version Support**: Both stable (`C_STRUCT`) and unstable (`C_STRUCT_UNSTABLE`) ABI types
 
 ## Installation
@@ -35,7 +36,7 @@ Install the CLI:
 cargo install cargo-duckdb-ext-tools
 ```
 
-The tool installs as `cargo-duckdb-ext` and provides three subcommands: `new`, `build`, and `package`.
+The tool installs as `cargo-duckdb-ext` and provides four subcommands: `new`, `build`, `package`, and `meta`.
 
 The companion macro crate is normally added automatically when you run `cargo duckdb-ext new`. For custom extension projects that do not use the generator, add it alongside DuckDB's loadable extension dependencies:
 
@@ -63,7 +64,10 @@ cargo duckdb-ext build -- --release
 # 4. The extension is now ready at:
 # target/release/quack.duckdb_extension
 
-# 5. Load and test the extension in DuckDB
+# 5. Inspect the extension metadata
+cargo duckdb-ext meta target/release/quack.duckdb_extension
+
+# 6. Load and test the extension in DuckDB
 duckdb -unsigned -c "load 'target/release/quack.duckdb_extension'; from quack('Joe')"
 ```
 
@@ -173,6 +177,40 @@ cargo duckdb-ext package \
   -d v1.4.2
 ```
 
+### 4. `cargo duckdb-ext meta` - Inspect and Update Extension Metadata
+
+Reads the 534-byte DuckDB metadata footer from a `.duckdb_extension` file, or updates selected fields in place. If the target file does not already contain a metadata footer and update options are provided, the command appends a new footer.
+
+```bash
+cargo duckdb-ext meta [OPTIONS] <EXTENSION-FILE>
+```
+
+#### Basic Usage
+
+```bash
+# Display metadata without modifying the extension
+cargo duckdb-ext meta target/release/quack.duckdb_extension
+
+# Update selected metadata fields
+cargo duckdb-ext meta \
+  -v v1.0.1 \
+  -p osx_arm64 \
+  -a v1.2.0 \
+  target/release/quack.duckdb_extension
+```
+
+#### Key Options
+
+- `--field-1`, `--field-2`, `--field-3`: Update reserved 32-byte fields as lowercase hexadecimal bytes
+- `-v, --extension-version`: Update the extension version
+- `-d, --duckdb-version`: Update the DuckDB version and set ABI type to `C_STRUCT_UNSTABLE`
+- `-a, --duckdb-capi-version`: Update the DuckDB C API version and set ABI type to `C_STRUCT`
+- `-p, --duckdb-platform`: Update the DuckDB platform identifier
+- `-m, --magic-version`: Update the metadata magic version
+- `-s, --signature`: Update the 256-byte signature area as lowercase hexadecimal bytes
+
+When no options are provided, `meta` is read-only. Hexadecimal fields must use lowercase characters and fit in their fixed field sizes.
+
 ## Companion Macro Crate
 
 `duckdb-ext-macros` provides the `#[duckdb_extension]` attribute macro used by generated extension projects:
@@ -230,17 +268,9 @@ The 534-byte footer includes:
 5. DuckDB/C API version (32 bytes)
 6. Platform identifier (32 bytes)
 7. Magic version `4` (32 bytes)
-8. 8 signature padding fields (256 bytes)
+8. Signature area (256 bytes; all zeros means unsigned)
 
-### Build Integration
-
-The `build` subcommand uses `cargo build --message-format=json` to:
-
-1. Execute the build with user-provided arguments
-2. Parse JSON output to find `cdylib` artifacts
-3. Extract package metadata from Cargo.toml
-4. Apply intelligent defaults for missing parameters
-5. Create and execute packaging commands
+The `package` and `build` subcommands write this footer when creating `.duckdb_extension` files. The `meta` subcommand can display the same fields, update selected values, or append a footer to an existing file that does not have one yet.
 
 ## Project Structure
 
@@ -300,8 +330,3 @@ Contributions are welcome. Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
-
-- The DuckDB team for creating an excellent database and extension system
-- The Rust community for the tooling ecosystem
-- All contributors and users of this project
