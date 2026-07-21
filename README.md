@@ -42,9 +42,9 @@ The companion macro crate is normally added automatically when you run `cargo du
 
 ```toml
 [dependencies]
-duckdb = { version = "1.10503.1", features = ["vtab-loadable"] }
-duckdb-ext-macros = "0.2.0"
-libduckdb-sys = { version = "1.10503.1", features = ["loadable-extension"] }
+duckdb = { version = "1.10504.0", features = ["vtab-loadable"] }
+duckdb-ext-macros = "0.3.0"
+libduckdb-sys = { version = "1.10504.0", features = ["loadable-extension"] }
 ```
 
 ## Complete Workflow Example

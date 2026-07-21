@@ -14,8 +14,8 @@ use std::ffi::OsStr;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
-use std::process::{Command as Process, Stdio};
-use thiserror::__private18::AsDisplay;
+use std::process::Command as Process;
+use std::process::Stdio;
 
 /// Command for creating new DuckDB extension projects
 ///
@@ -139,7 +139,7 @@ strip = true"#)?;
     /// - `libduckdb-sys` with loadable-extension feature
     /// - `duckdb-ext-macros` for the extension entry point macro
     fn add_dependencies(&self) -> Result<(), ToolsError> {
-        let path = self.root.join("Cargo.toml").as_display().to_string();
+        let path = self.root.join("Cargo.toml").display().to_string();
         creating!("Cargo add duckdb");
         Self::cargo(&["add", "--manifest-path", path.as_str(), "duckdb", "--features", if self.is_table_function { "vtab-loadable" } else { "vscalar" }])?;
         creating!("Cargo add libduckdb-sys");

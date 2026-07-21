@@ -1,6 +1,6 @@
 [package]
 name = "duckdb-ext-macros"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 authors = ["Zhang, Zepeng <redraiment@gmail.com>"]
 description = "A modern, Rust 2024 Edition compatible procedural macro for creating DuckDB loadable extensions."
@@ -17,7 +17,7 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-darling = "0.21.3"
-proc-macro2 = "1.0.106"
-quote = "1.0.45"
-syn = "2.0.117"
+darling = "0.23.0"
+proc-macro2 = "1.0.107"
+quote = "1.0.47"
+syn = { version = "3.0.2", features = ["full"] }

@@ -42,9 +42,9 @@ cargo install cargo-duckdb-ext-tools
 
 ```toml
 [dependencies]
-duckdb = { version = "1.10503.1", features = ["vtab-loadable"] }
-duckdb-ext-macros = "0.2.0"
-libduckdb-sys = { version = "1.10503.1", features = ["loadable-extension"] }
+duckdb = { version = "1.10504.0", features = ["vtab-loadable"] }
+duckdb-ext-macros = "0.3.0"
+libduckdb-sys = { version = "1.10504.0", features = ["loadable-extension"] }
 ```
 
 ## 完整工作流程示例
